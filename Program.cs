@@ -2,30 +2,26 @@ using Microsoft.AnalysisServices.AdomdClient;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Mở CORS để Lát Frontend gọi API không bị lỗi
-builder.Services.AddCors(options => {
-    options.AddDefaultPolicy(policy => {
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
-    });
-});
-
+builder.Services.AddCors(options => options.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 var app = builder.Build();
 app.UseCors();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
-// Hàm xử lý chung để thực thi MDX và trả về danh sách Dictionary động
+string connString = "Data Source=DESKTOP-C4RM5V7\\OLAP;Catalog=SSAS_OnlineRetail;";
+
 List<Dictionary<string, object>> ExecuteOlapQuery(string mdxQuery)
 {
-    string connString = "Data Source=DESKTOP-C4RM5V7\\OLAP;Catalog=SSAS_OnlineRetail;";
+    Console.WriteLine($"\n[{DateTime.Now:HH:mm:ss}] MDX:\n{mdxQuery}");
     var results = new List<Dictionary<string, object>>();
-
-    using (AdomdConnection conn = new AdomdConnection(connString))
-    {
-        conn.Open();
-        using (AdomdCommand cmd = new AdomdCommand(mdxQuery, conn))
+    try {
+        using (AdomdConnection conn = new AdomdConnection(connString))
         {
+            conn.Open();
+            using (AdomdCommand cmd = new AdomdCommand(mdxQuery, conn))
             using (AdomdDataReader dr = cmd.ExecuteReader())
             {
                 while (dr.Read())
@@ -33,157 +29,100 @@ List<Dictionary<string, object>> ExecuteOlapQuery(string mdxQuery)
                     var row = new Dictionary<string, object>();
                     for (int i = 0; i < dr.FieldCount; i++)
                     {
-                        // Lấy tên cột (ví dụ: "[Dim Cua Hang].[Ten Thanh Pho].[Ten Thanh Pho]")
                         string rawName = dr.GetName(i);
-                        
-                        // Làm sạch tên cột và ghép tên Dimension để tránh trùng lặp (ví dụ Cửa hàng và Khách hàng đều có Thành phố)
-                        string[] parts = rawName.Split('.');
-                        string cleanName = "";
+                        string[] parts = rawName.Replace("[", "").Replace("]", "").Split('.');
+                        string lastPart = parts.Last();
+
+                        // Phân loại cột: [M] cho Measure, [D] cho Dimension
+                        string cleanName;
                         if (rawName.Contains("Measures")) {
-                            cleanName = parts.Last().Replace("[", "").Replace("]", "");
-                        }
-                        else if (parts.Length >= 2) {
-                            string dimName = parts[0].Replace("[", "").Replace("]", "").Replace("Dim ", "");
-                            string levelName = parts[1].Replace("[", "").Replace("]", "");
-                            cleanName = dimName + " - " + levelName;
-                        }
-                        else {
-                            cleanName = rawName.Replace("[", "").Replace("]", "");
+                            cleanName = $"[M] {lastPart}";
+                        } else {
+                            string dimName = parts[0].Replace("Dim ", "");
+                            cleanName = parts.Length >= 2 ? $"[D] {dimName} | {lastPart}" : $"[D] {lastPart}";
                         }
                         
-                        // Xử lý giá trị
-                        object value = dr[i];
-                        if (value == DBNull.Value || value == null)
-                        {
-                            row[cleanName] = "N/A";
-                        }
-                        else
-                        {
-                            row[cleanName] = value;
-                        }
+                        row[cleanName] = dr[i]?.ToString() ?? "0";
                     }
                     results.Add(row);
                 }
             }
         }
-    }
+    } catch (Exception ex) { Console.WriteLine("ERR MDX: " + ex.Message); }
     return results;
 }
 
-// API Schema
-app.MapGet("/api/schema", () => {
-    string connString = "Data Source=DESKTOP-C4RM5V7\\OLAP;Catalog=SSAS_OnlineRetail;";
-    var schema = new List<object>();
-    try {
-        using (AdomdConnection conn = new AdomdConnection(connString)) {
-            conn.Open();
-            foreach (CubeDef cube in conn.Cubes) {
-                if (cube.Name.StartsWith("$")) continue;
-                var cubeInfo = new {
-                    CubeName = cube.Name,
-                    Dimensions = new List<object>()
-                };
-                foreach (Dimension dim in cube.Dimensions) {
-                    var dimInfo = new {
-                        DimName = dim.Name,
-                        Hierarchies = new List<object>()
-                    };
-                    foreach (Hierarchy hier in dim.Hierarchies) {
-                        var hierInfo = new {
-                            HierName = hier.Name,
-                            Levels = new List<string>()
-                        };
-                        foreach (Level lvl in hier.Levels) {
-                            hierInfo.Levels.Add(lvl.Name);
-                        }
-                        dimInfo.Hierarchies.Add(hierInfo);
-                    }
-                    cubeInfo.Dimensions.Add(dimInfo);
-                }
-                schema.Add(cubeInfo);
-            }
-        }
-        return Results.Ok(schema);
-    } catch(Exception ex) {
-        return Results.Problem(ex.Message);
-    }
-});
-
-// API Bán Hàng
-app.MapGet("/api/sales", () => {
-    // Thử query theo nhiều bộ measure để tương thích dữ liệu cube hiện tại.
-    var salesQueries = new[] {
-        @"
-        SELECT 
-            NON EMPTY { [Measures].[So Luong Dat], [Measures].[Thanh Tien] } ON COLUMNS,
-            NON EMPTY { 
-                [Dim Thoi Gian].[Ngay].Children *
-                [Dim Khach Hang].[Ten KH].Children *
-                [Dim Khach Hang].[Loai Khach Hang].Children *
-                [Dim Khach Hang].[Ten Thanh Pho].Children *
-                [Dim Khach Hang].[Bang].Children *
-                [Dim Cua Hang].[Ma Cua Hang].Children *
-                [Dim Cua Hang].[Ten Thanh Pho].Children *
-                [Dim Cua Hang].[So Dien Thoai].Children *
-                [Dim Mat Hang].[Mo Ta].Children
-            } ON ROWS
-        FROM [DW Online Retail]",
-        @"
-        SELECT 
-            NON EMPTY { [Measures].[Sales Amount] } ON COLUMNS,
-            NON EMPTY { 
-                [Dim Thoi Gian].[Ngay].Children *
-                [Dim Khach Hang].[Ten KH].Children *
-                [Dim Khach Hang].[Loai Khach Hang].Children *
-                [Dim Khach Hang].[Ten Thanh Pho].Children *
-                [Dim Khach Hang].[Bang].Children *
-                [Dim Cua Hang].[Ma Cua Hang].Children *
-                [Dim Cua Hang].[Ten Thanh Pho].Children *
-                [Dim Cua Hang].[So Dien Thoai].Children *
-                [Dim Mat Hang].[Mo Ta].Children
-            } ON ROWS
-        FROM [DW Online Retail]"
+app.MapGet("/api/filters", () => {
+    var filters = new Dictionary<string, List<FilterItem>>();
+    var levels = new Dictionary<string, string> {
+        { "Nam", "[Dim Thoi Gian].[Nam]" },
+        { "Quy", "[Dim Thoi Gian].[Quy]" },
+        { "Thang", "[Dim Thoi Gian].[Thang]" },
+        { "BangCH", "[Dim Cua Hang].[Bang]" },
+        { "ThanhPhoCH", "[Dim Cua Hang].[Ten Thanh Pho]" },
+        { "LoaiKH", "[Dim Khach Hang].[Loai Khach Hang]" },
+        { "TenKH", "[Dim Khach Hang].[Ten KH]" },
+        { "MoTa", "[Dim Mat Hang].[Mo Ta]" }
     };
 
-    Exception? lastError = null;
-    foreach (var query in salesQueries)
+    using (AdomdConnection conn = new AdomdConnection(connString))
     {
-        try {
-            var results = ExecuteOlapQuery(query);
-            return Results.Ok(results);
-        }
-        catch (Exception ex) {
-            lastError = ex;
+        conn.Open();
+        foreach (var item in levels)
+        {
+            var members = new List<FilterItem>();
+            try {
+                string mdx = $@"WITH MEMBER [Measures].[UName] AS {item.Value}.CurrentMember.UniqueName 
+                               SELECT {{ [Measures].[UName] }} ON 0, 
+                               {item.Value}.Children ON 1 FROM [DW Online Retail]";
+                using (AdomdCommand cmd = new AdomdCommand(mdx, conn))
+                using (AdomdDataReader dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read()) {
+                        string label = dr[0]?.ToString(); 
+                        string id = dr[1]?.ToString();    
+                        if (!string.IsNullOrEmpty(label)) members.Add(new FilterItem(id, label));
+                    }
+                }
+            } catch { }
+            filters[item.Key] = members.OrderBy(x => x.Label).ToList();
         }
     }
-
-    return Results.Problem("Lỗi MDX Bán Hàng: " + (lastError?.Message ?? "Không xác định"));
+    return Results.Ok(filters);
 });
 
-// API Tồn Kho
-app.MapGet("/api/inventory", () => {
-    string mdxQuery = @"
-        SELECT 
-            NON EMPTY { [Measures].[So Luong Trong Kho] } ON COLUMNS,
-            NON EMPTY { 
-                [Dim Cua Hang].[Ma Cua Hang].Children * 
-                [Dim Cua Hang].[Ten Thanh Pho].Children * 
-                [Dim Cua Hang].[Bang].Children * 
-                [Dim Cua Hang].[So Dien Thoai].Children * 
-                [Dim Mat Hang].[Mo Ta].Children *
-                [Dim Mat Hang].[Kich Co].Children *
-                [Dim Mat Hang].[Trong Luong].Children *
-                [Dim Mat Hang].[Don Gia].Children
-            } ON ROWS
-        FROM [DW Online Retail]";
+app.MapPost("/api/query", (QueryRequest req) => {
+    string measures = req.Cube == "BanHang" 
+        ? "{ [Measures].[So Luong Dat], [Measures].[Thanh Tien], [Measures].[Fact Ban Hang Count] }" 
+        : "{ [Measures].[So Luong Trong Kho] }";
 
-    try {
-        var results = ExecuteOlapQuery(mdxQuery);
-        return Results.Ok(results);
+    var axisRows = req.Dimensions.Select(dim => dim switch {
+        "Nam" => "[Dim Thoi Gian].[Nam].Children",
+        "Quy" => "[Dim Thoi Gian].[Quy].Children",
+        "Thang" => "[Dim Thoi Gian].[Thang].Children",
+        "BangCH" => "[Dim Cua Hang].[Bang].Children",
+        "ThanhPhoCH" => "[Dim Cua Hang].[Ten Thanh Pho].Children",
+        "LoaiKH" => "[Dim Khach Hang].[Loai Khach Hang].Children",
+        "TenKH" => "[Dim Khach Hang].[Ten KH].Children",
+        "MoTa" => "[Dim Mat Hang].[Mo Ta].Children",
+        _ => ""
+    }).Where(s => !string.IsNullOrEmpty(s)).ToList();
+
+    if (axisRows.Count == 0) axisRows.Add("[Dim Mat Hang].[Mo Ta].Children");
+
+    string fromClause = "[DW Online Retail]";
+    if (req.Filters != null) {
+        foreach (var f in req.Filters.Where(x => x.Value != "All")) {
+            fromClause = $"(SELECT {{ {f.Value} }} ON 0 FROM {fromClause})";
+        }
     }
-    catch (Exception ex) {
-        return Results.Problem("Lỗi MDX Tồn Kho: " + ex.Message);
-    }
+
+    string mdx = $"SELECT NON EMPTY {measures} ON 0, NON EMPTY {{ {string.Join(" * ", axisRows)} }} ON 1 FROM {fromClause}";
+    return Results.Ok(ExecuteOlapQuery(mdx));
 });
 
+app.MapGet("/", () => Results.File(Path.Combine(Directory.GetCurrentDirectory(), "index.html"), "text/html"));
 app.Run();
+
+public record FilterItem(string Id, string Label);
+public record QueryRequest(string Cube, List<string> Dimensions, Dictionary<string, string>? Filters);
