@@ -1,0 +1,35 @@
+## Build output
+bin/
+obj/
+
+## User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+## Visual Studio Code
+.vscode/
+
+## Rider
+.idea/
+
+## ASP.NET
+appsettings.Development.json
+
+## Logs
+*.log
+logs/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+
+## Publish output
+publish/

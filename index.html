@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard OLAP Chuyên Nghiệp</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.22/c3.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
+    
+    <!-- D3 & C3 for Charts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.22/c3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/c3_renderers.min.js"></script>
+    
+    <!-- Bootstrap Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #e0e7ff;
+            --success: #10b981;
+            --surface: #ffffff;
+            --bg: #f1f5f9;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+            --shadow-lg: 0 10px 40px rgba(99,102,241,0.12), 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            background-image: radial-gradient(ellipse at 20% 10%, rgba(99,102,241,0.07) 0%, transparent 50%),
+                              radial-gradient(ellipse at 80% 80%, rgba(16,185,129,0.05) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        /* ── Header Banner ── */
+        .page-header {
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%);
+            padding: 28px 40px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(79,70,229,0.35);
+        }
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.07);
+        }
+        .page-header::after {
+            content: '';
+            position: absolute;
+            bottom: -60px; left: 30%;
+            width: 300px; height: 200px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+        }
+        .page-header h3 {
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin: 0 0 4px;
+        }
+        .page-header p {
+            color: rgba(255,255,255,0.75);
+            font-size: 0.875rem;
+            margin: 0;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            z-index: 1;
+            position: relative;
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            background: #6ee7b7;
+            border-radius: 50%;
+            box-shadow: 0 0 0 3px rgba(110,231,183,0.35);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(110,231,183,0.35); }
+            50%       { box-shadow: 0 0 0 6px rgba(110,231,183,0.15); }
+        }
+
+        /* ── Tabs ── */
+        .nav-tabs {
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 24px;
+            gap: 12px;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 12px 12px 0 0;
+            background: transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .nav-tabs .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px; left: 0; right: 0;
+            height: 2px;
+            background: transparent;
+            transition: background 0.3s ease;
+        }
+        .nav-tabs .nav-link:hover {
+            color: var(--primary);
+            background: rgba(99,102,241,0.05);
+        }
+        .nav-tabs .nav-link.active {
+            color: var(--primary-dark);
+            background: transparent;
+        }
+        .nav-tabs .nav-link.active::after {
+            background: var(--primary);
+        }
+
+        /* ── Main Card ── */
+        .dashboard-card {
+            background: var(--surface);
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        /* ── Pivot UI Tweak ── */
+        .pvtUi { width: 100%; font-size: 13.5px; color: var(--text); }
+        .pvtAxisContainer, .pvtVals {
+            background: #fafbff;
+            border: 2px dashed #c7d2fe;
+            border-radius: 14px;
+            padding: 14px;
+            transition: border-color 0.25s, background 0.25s;
+            min-height: 56px;
+        }
+        .pvtAxisContainer:hover, .pvtVals:hover {
+            border-color: var(--primary);
+            background: #f5f3ff;
+        }
+
+        .pvtAxisContainer li.pvtAttr {
+            background: var(--surface);
+            border: 1px solid #ddd6fe;
+            padding: 6px 14px;
+            border-radius: 50px;
+            box-shadow: var(--shadow-sm);
+            font-weight: 500;
+            font-size: 13px;
+            color: #4338ca;
+            transition: all 0.18s ease;
+            margin: 3px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .pvtAxisContainer li.pvtAttr:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary-dark);
+            cursor: grab;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(99,102,241,0.18);
+        }
+
+        table.pvtTable {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 20px;
+            font-size: 13.5px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
+        }
+        table.pvtTable thead tr th,
+        table.pvtTable tbody tr th {
+            background: linear-gradient(180deg, #f8faff 0%, #f1f5f9 100%);
+            border: 1px solid #e8edf5;
+            padding: 13px 16px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+        }
+        table.pvtTable tbody tr td {
+            border: 1px solid #edf0f7;
+            padding: 11px 16px;
+            color: #334155;
+        }
+        table.pvtTable tbody tr:hover td {
+            background: linear-gradient(90deg, #f5f3ff, #ede9fe);
+            color: var(--primary-dark);
+        }
+        table.pvtTable tbody tr td.pvtTotal,
+        table.pvtTable tbody tr th.pvtTotalLabel,
+        table.pvtTable thead tr th.pvtTotalLabel {
+            background: linear-gradient(135deg, #ede9fe, #ddd6fe) !important;
+            font-weight: 600;
+            color: #3730a3;
+        }
+
+        .pvtAggregator, .pvtRenderer {
+            padding: 7px 12px;
+            border-radius: 10px;
+            border: 1px solid #c7d2fe;
+            font-weight: 500;
+            font-size: 13px;
+            color: var(--text);
+            outline: none;
+            background: var(--surface);
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+
+        /* ── Loading ── */
+        .loading-wrap {
+            padding: 64px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+        .spinner-ring {
+            width: 52px; height: 52px;
+            border: 4px solid #e0e7ff;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.85s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .c3-tooltip-container { z-index: 1000; } /* Fix c3 tooltip visibility */
+    </style>
+</head>
+<body>
+
+<div class="container-fluid py-4 px-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+
+            <!-- Header Banner -->
+            <div class="page-header d-flex justify-content-between align-items-center">
+                <div style="position:relative;z-index:1">
+                    <h3>&#x1F4CA; Dashboard Phân Tích OLAP</h3>
+                    <p>Hệ thống phân tích Kho Dữ Liệu Đa Chiều &mdash; Data Warehouse</p>
+                </div>
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    Hệ thống trực tuyến
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-pane" type="button" role="tab" aria-controls="sales-pane" aria-selected="true">
+                        &#x1F4B0; Phân Tích Bán Hàng
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-pane" type="button" role="tab" aria-controls="inventory-pane" aria-selected="false">
+                        &#x1F4E6; Phân Tích Tồn Kho
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Main Card -->
+            <div class="dashboard-card tab-content" id="dashboardTabsContent">
+                
+                <!-- BÁN HÀNG PANE -->
+                <div class="tab-pane fade show active" id="sales-pane" role="tabpanel" aria-labelledby="sales-tab" tabindex="0">
+                    <div id="sales-output" class="w-100">
+                        <div class="loading-wrap">
+                            <div class="spinner-ring"></div>
+                            <span class="loading-text">Đang tải dữ liệu Bán Hàng từ Khối Cube...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TỒN KHO PANE -->
+                <div class="tab-pane fade" id="inventory-pane" role="tabpanel" aria-labelledby="inventory-tab" tabindex="0">
+                    <div id="inventory-output" class="w-100"></div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    $(function(){
+        // Cấu hình C3 Renderers
+        var renderers = $.extend($.pivotUtilities.renderers, $.pivotUtilities.c3_renderers);
+
+        function getApiErrorMessage(payload, fallbackMessage) {
+            if (!payload) return fallbackMessage;
+            if (typeof payload === 'string') return payload;
+            if (payload.detail) return payload.detail;
+            if (payload.title) return payload.title;
+            return fallbackMessage;
+        }
+
+        function fetchArrayData(url, defaultErrorMessage) {
+            return fetch(url)
+                .then(async response => {
+                    var contentType = response.headers.get('content-type') || '';
+                    var payload = contentType.includes('application/json')
+                        ? await response.json()
+                        : await response.text();
+
+                    if (!response.ok) {
+                        throw new Error(getApiErrorMessage(payload, defaultErrorMessage));
+                    }
+
+                    if (!Array.isArray(payload)) {
+                        throw new Error('Dữ liệu API không đúng định dạng mảng.');
+                    }
+
+                    return payload;
+                });
+        }
+
+        function pickExistingField(data, candidates) {
+            if (!data || data.length === 0) return null;
+            var keys = Object.keys(data[0] || {});
+            for (var i = 0; i < candidates.length; i++) {
+                if (keys.includes(candidates[i])) return candidates[i];
+            }
+            return null;
+        }
+
+        function loadSalesData() {
+            fetchArrayData('http://localhost:5250/api/sales?t=' + new Date().getTime(), 'Không thể tải dữ liệu bán hàng từ API.')
+                .then(data => {
+                    $("#sales-output").empty();
+                    if (!data || data.length === 0) {
+                        $("#sales-output").html('<div class="alert alert-warning">Dữ liệu trả về rỗng. Vui lòng kiểm tra lại Cube.</div>');
+                        return;
+                    }
+                    try {
+                        var salesValueField = pickExistingField(data, ["So Luong Dat", "Thanh Tien", "Sales Amount"]);
+                        var salesPivotOptions = {
+                            renderers: renderers,
+                            rows: ["Cua Hang - Ten Thanh Pho", "Mat Hang - Mo Ta"],
+                            cols: [],
+                            aggregatorName: salesValueField ? "Sum" : "Count",
+                            rendererName: "Table"
+                        };
+
+                        if (salesValueField) {
+                            salesPivotOptions.vals = [salesValueField];
+                        }
+
+                        $("#sales-output").pivotUI(
+                            data,
+                            salesPivotOptions
+                        );
+                    } catch (error) {
+                        console.error('Lỗi render Pivot Bán Hàng:', error);
+                        $("#sales-output").html('<div class="alert alert-danger"><strong>Lỗi:</strong> Không render được PivotTable. Chi tiết: ' + (error.message || error) + '</div>');
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi lấy data Bán Hàng:', error);
+                    $("#sales-output").html('<div class="alert alert-danger"><strong>Lỗi:</strong> ' + (error.message || 'Không thể kết nối tới máy chủ Backend. Hãy chắc chắn API /api/sales đang chạy.') + '</div>');
+                });
+        }
+
+        function loadInventoryData() {
+            $("#inventory-output").html('<div class="loading-wrap"><div class="spinner-ring"></div><span class="loading-text">Đang tải dữ liệu Tồn Kho...</span></div>');
+            
+            fetchArrayData('http://localhost:5250/api/inventory?t=' + new Date().getTime(), 'Không thể tải dữ liệu tồn kho từ API.')
+                .then(data => {
+                    $("#inventory-output").empty();
+                    if (!data || data.length === 0) {
+                        $("#inventory-output").html('<div class="alert alert-warning">Dữ liệu trả về rỗng. Vui lòng kiểm tra lại Cube.</div>');
+                        return;
+                    }
+                    try {
+                        var inventoryValueField = pickExistingField(data, ["So Luong Trong Kho"]);
+                        var inventoryPivotOptions = {
+                            renderers: renderers,
+                            rows: ["Cua Hang - Ten Thanh Pho", "Mat Hang - Mo Ta"],
+                            cols: [],
+                            aggregatorName: inventoryValueField ? "Sum" : "Count",
+                            rendererName: "Table"
+                        };
+
+                        if (inventoryValueField) {
+                            inventoryPivotOptions.vals = [inventoryValueField];
+                        }
+
+                        $("#inventory-output").pivotUI(
+                            data,
+                            inventoryPivotOptions
+                        );
+                    } catch (error) {
+                        console.error('Lỗi render Pivot Tồn Kho:', error);
+                        $("#inventory-output").html('<div class="alert alert-danger"><strong>Lỗi:</strong> Không render được PivotTable. Chi tiết: ' + (error.message || error) + '</div>');
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi lấy data Tồn Kho:', error);
+                    $("#inventory-output").html('<div class="alert alert-danger"><strong>Lỗi:</strong> ' + (error.message || 'Không thể kết nối tới máy chủ Backend. Hãy chắc chắn API /api/inventory đang chạy.') + '</div>');
+                });
+        }
+
+        // Load Sales tab by default
+        loadSalesData();
+
+        // Load Inventory tab when switched to it for the first time
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (event) {
+            var target = $(event.target).attr("data-bs-target"); // newly activated tab
+            if (target === "#inventory-pane" && $("#inventory-output").is(':empty')) {
+                loadInventoryData();
+            }
+        });
+
+    });
+</script>
+
+</body>
+</html>
