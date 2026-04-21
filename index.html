@@ -18,39 +18,23 @@
         .dynamic-filters { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
         .filter-group { display: flex; flex-direction: column; gap: 4px; }
         .filter-group label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-        .filter-select { border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 12px; min-width: 140px; background: #fff; outline: none; }
+        .filter-select { border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 12px; min-width: 150px; background: #fff; outline: none; }
 
         .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-align: center; }
         .kpi-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
         .kpi-value { font-size: 22px; font-weight: 700; color: var(--primary); }
 
         .dim-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-        .dim-title { font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9; }
+        .dim-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; }
+        .dim-title { font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin: 0; }
         .dim-item { padding: 9px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 5px; transition: 0.2s; }
         .dim-item:hover { background: #f8fafc; color: var(--primary); }
         .dim-item.active { background: #eef2ff; color: var(--primary); font-weight: 600; border-left: 4px solid var(--primary); }
         
         .card-chart { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; height: 420px; position: relative; }
-        
-        /* Cấu hình thanh trượt cho bảng dữ liệu */
-        .table-container {
-            max-height: 500px; /* Chiều cao tối đa của bảng */
-            overflow-y: auto;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
+        .table-container { max-height: 500px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--border); }
         .olap-table { width: 100%; font-size: 11px; border-collapse: collapse; position: relative; }
-        
-        /* Cố định tiêu đề bảng khi cuộn */
-        .olap-table thead th { 
-            position: sticky; 
-            top: 0; 
-            background: #f8fafc; 
-            z-index: 10; 
-            box-shadow: inset 0 -1px 0 var(--border);
-        }
-
+        .olap-table thead th { position: sticky; top: 0; background: #f8fafc; z-index: 10; box-shadow: inset 0 -1px 0 var(--border); }
         .olap-table th { padding: 12px; border-bottom: 2px solid var(--border); text-align: left; color: #64748b; }
         .olap-table td { padding: 12px; border-bottom: 1px solid var(--border); }
 
@@ -69,11 +53,11 @@
             <div class="d-flex gap-2">
                 <div class="btn-group">
                     <input type="radio" class="btn-check" name="cube" id="cb-sales" value="BanHang" checked onchange="loadData()">
-                    <label class="btn btn-outline-primary btn-sm" for="cb-sales">BÁN HÀNG</label>
+                    <label class="btn btn-outline-primary btn-sm" for="cb-sales">CUBE BÁN HÀNG</label>
                     <input type="radio" class="btn-check" name="cube" id="cb-inv" value="TonKho" onchange="loadData()">
-                    <label class="btn btn-outline-primary btn-sm" for="cb-inv">TỒN KHO</label>
+                    <label class="btn btn-outline-primary btn-sm" for="cb-inv">CUBE KHO</label>
                 </div>
-                <button class="btn btn-light btn-sm border" onclick="resetAll()">↺ Reset All</button>
+                <button class="btn btn-light btn-sm border" onclick="location.reload()">↺ Reload Toàn Trang</button>
             </div>
         </div>
     </div>
@@ -89,6 +73,11 @@
         <div class="row g-4">
             <div class="col-md-3">
                 <div class="dim-panel">
+                    <div class="dim-header">
+                        <span class="fw-bold small text-muted">CÁC CHIỀU PHÂN TÍCH</span>
+                        <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="resetSidebar()" style="font-size: 11px;">↺ Reset Chiều</button>
+                    </div>
+
                     <div class="mb-4">
                         <div class="dim-title">🕒 THỜI GIAN</div>
                         <div class="dim-item" data-id="Nam" data-label="Năm">Năm <span>►</span></div>
@@ -121,12 +110,10 @@
                 </div>
                 <div class="dim-panel overflow-hidden">
                     <div class="fw-bold mb-3 small text-muted">BẢNG DỮ LIỆU ĐA CHIỀU (REALTIME)</div>
-                    <div class="table-container">
-                        <table class="olap-table" id="dataTable">
-                            <thead><tr id="t-head"><th>Chọn ít nhất 1 chiều để xem dữ liệu...</th></tr></thead>
-                            <tbody id="t-body"></tbody>
-                        </table>
-                    </div>
+                    <div class="table-container"><table class="olap-table" id="dataTable">
+                        <thead><tr id="t-head"><th>Đang tải dữ liệu...</th></tr></thead>
+                        <tbody id="t-body"></tbody>
+                    </table></div>
                 </div>
             </div>
         </div>
@@ -136,13 +123,21 @@
         let selectedDims = [], allFilterMembers = {}, activeFilters = {}, barChart, pieChart;
 
         $(function() {
-            fetch('/api/filters').then(r => r.json()).then(data => { allFilterMembers = data; });
+            // Load filters và mặc định chọn Năm
+            fetch('/api/filters').then(r => r.json()).then(data => { 
+                allFilterMembers = data; 
+                // Mặc định chọn chiều Năm ngay khi khởi động
+                $('.dim-item[data-id="Nam"]').addClass('active');
+                selectedDims.push('Nam');
+                renderFilterBar();
+                loadData();
+            });
 
             $('.dim-item').click(function() {
                 const id = $(this).data('id');
                 $(this).toggleClass('active');
                 if($(this).hasClass('active')) {
-                    selectedDims.push(id);
+                    if(!selectedDims.includes(id)) selectedDims.push(id);
                 } else {
                     selectedDims = selectedDims.filter(d => d !== id);
                     delete activeFilters[id];
@@ -151,6 +146,15 @@
                 loadData();
             });
         });
+
+        function resetSidebar() {
+            selectedDims = ['Nam'];
+            activeFilters = {};
+            $('.dim-item').removeClass('active');
+            $('.dim-item[data-id="Nam"]').addClass('active');
+            renderFilterBar();
+            loadData();
+        }
 
         function renderFilterBar() {
             const container = $('#filter-container');
@@ -180,10 +184,10 @@
             const cube = $('input[name="cube"]:checked').val();
             if (cube === 'TonKho') {
                 $('#section-khachhang').hide();
-                if (selectedDims.includes('LoaiKH') || selectedDims.includes('TenKH') || selectedDims.includes('MaDon')) {
-                    selectedDims = selectedDims.filter(d => d !== 'LoaiKH' && d !== 'TenKH' && d !== 'MaDon');
-                    $('.dim-item[data-id="LoaiKH"], .dim-item[data-id="TenKH"], .dim-item[data-id="MaDon"]').removeClass('active');
-                    delete activeFilters['LoaiKH']; delete activeFilters['TenKH']; delete activeFilters['MaDon'];
+                if (selectedDims.includes('LoaiKH') || selectedDims.includes('TenKH')) {
+                    selectedDims = selectedDims.filter(d => d !== 'LoaiKH' && d !== 'TenKH');
+                    $('.dim-item[data-id="LoaiKH"], .dim-item[data-id="TenKH"]').removeClass('active');
+                    delete activeFilters['LoaiKH']; delete activeFilters['TenKH'];
                     renderFilterBar();
                 }
             } else {
@@ -218,8 +222,6 @@
 
             const cols = Object.keys(data[0]);
             $('#t-head').html(cols.map(c => `<th>${c.replace(/\[[DM]\] /g, '')}</th>`).join(''));
-            
-            // Hiển thị toàn bộ dữ liệu trả về (bỏ slice 100)
             $('#t-body').html(data.map(r => `<tr>${cols.map(c => `<td>${r[c]}</td>`).join('')}</tr>`).join(''));
 
             const valField = cols.find(c => c.includes('[M]') && (c.toLowerCase().includes('tien') || c.toLowerCase().includes('kho')));
@@ -263,7 +265,6 @@
             });
         }
         function format(v) { return new Intl.NumberFormat('vi-VN').format(v); }
-        function resetAll() { location.reload(); }
     </script>
 </body>
 </html>
