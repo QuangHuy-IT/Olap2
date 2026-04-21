@@ -13,6 +13,33 @@ app.UseStaticFiles();
 
 string connString = "Data Source=DESKTOP-C4RM5V7\\OLAP;Catalog=SSAS_OnlineRetail;";
 
+// HÀM DÒ TÌM ĐƯỜNG DẪN MÃ ĐƠN HÀNG THỰC TẾ
+string GetOrderPath() {
+    Console.WriteLine("\n--- ĐANG TRUY TÌM CHIỀU MÃ ĐƠN HÀNG TRONG CUBE ---");
+    try {
+        using (AdomdConnection conn = new AdomdConnection(connString)) {
+            conn.Open();
+            var cube = conn.Cubes["DW Online Retail"];
+            foreach (Dimension dim in cube.Dimensions) {
+                if (dim.Name.StartsWith("$")) continue;
+                foreach (Hierarchy hier in dim.Hierarchies) {
+                    string hName = hier.Name.ToLower();
+                    string dName = dim.Name.ToLower();
+                    // Tìm kiếm chính xác mã đơn, bỏ qua đơn giá
+                    if ((hName.Contains("ma don") || hName.Contains("madon") || hName.Contains("don hang")) 
+                        && !hName.Contains("gia")) {
+                        string path = $"[{dim.Name}].[{hier.Name}]";
+                        Console.WriteLine($"=> TÌM THẤY CHIỀU ĐƠN HÀNG: {path}");
+                        return path;
+                    }
+                }
+            }
+        }
+    } catch { }
+    // Fallback nếu không thấy (bạn cần kiểm tra xem đã add MaDon vào Dimension của Cube chưa)
+    return "[Dim Khach Hang].[Ten KH]"; 
+}
+
 List<Dictionary<string, object>> ExecuteOlapQuery(string mdxQuery)
 {
     Console.WriteLine($"\n[{DateTime.Now:HH:mm:ss}] MDX:\n{mdxQuery}");
@@ -46,19 +73,21 @@ List<Dictionary<string, object>> ExecuteOlapQuery(string mdxQuery)
                 }
             }
         }
-    } catch (Exception ex) { Console.WriteLine("ERR MDX: " + ex.Message); }
+    } catch (Exception ex) { Console.WriteLine("ERR: " + ex.Message); }
     return results;
 }
 
 app.MapGet("/api/filters", () => {
     var filters = new Dictionary<string, List<FilterItem>>();
+    string orderPath = GetOrderPath();
     var levels = new Dictionary<string, string> {
         { "Nam", "[Dim Thoi Gian].[Nam]" }, { "Quy", "[Dim Thoi Gian].[Quy]" }, 
         { "Thang", "[Dim Thoi Gian].[Thang]" }, { "Ngay", "[Dim Thoi Gian].[Ngay]" },
         { "BangCH", "[Dim Cua Hang].[Bang]" }, { "ThanhPhoCH", "[Dim Cua Hang].[Ten Thanh Pho]" },
         { "TenCH", "[Dim Cua Hang].[Ten Cua Hang]" },
         { "LoaiKH", "[Dim Khach Hang].[Loai Khach Hang]" }, { "TenKH", "[Dim Khach Hang].[Ten KH]" },
-        { "TenMH", "[Dim Mat Hang].[Ten Mat Hang]" }
+        { "TenMH", "[Dim Mat Hang].[Ten Mat Hang]" },
+        { "DonHang", orderPath } 
     };
 
     using (AdomdConnection conn = new AdomdConnection(connString))
@@ -69,13 +98,16 @@ app.MapGet("/api/filters", () => {
             var members = new List<FilterItem>();
             try {
                 string mdx = $@"WITH MEMBER [Measures].[UName] AS {item.Value}.CurrentMember.UniqueName 
-                               SELECT {{ [Measures].[UName] }} ON 0, {item.Value}.Children ON 1 FROM [DW Online Retail]";
+                               MEMBER [Measures].[Cap] AS {item.Value}.CurrentMember.Member_Caption
+                               SELECT {{ [Measures].[UName], [Measures].[Cap] }} ON 0, 
+                               {item.Value}.Children ON 1 FROM [DW Online Retail]";
                 using (AdomdCommand cmd = new AdomdCommand(mdx, conn))
                 using (AdomdDataReader dr = cmd.ExecuteReader())
                 {
                     while (dr.Read()) {
-                        if (!string.IsNullOrEmpty(dr[0]?.ToString()))
-                            members.Add(new FilterItem(dr[1]?.ToString(), dr[0]?.ToString()));
+                        string id = dr[1]?.ToString(); 
+                        string label = dr[2]?.ToString();    
+                        if (!string.IsNullOrEmpty(id) && !id.Contains("All")) members.Add(new FilterItem(id, label ?? id));
                     }
                 }
             } catch { }
@@ -90,31 +122,35 @@ app.MapPost("/api/query", (QueryRequest req) => {
         ? "{ [Measures].[So Luong Dat], [Measures].[Thanh Tien], [Measures].[Fact Ban Hang Count] }" 
         : "{ [Measures].[So Luong Trong Kho] }";
 
-    var axisRows = new List<string>();
+    string orderPath = GetOrderPath();
+    var axisSet = new HashSet<string>();
+
     foreach (var dim in req.Dimensions) {
-        switch (dim) {
-            case "Nam": axisRows.Add("[Dim Thoi Gian].[Nam].Children"); break;
-            case "Quy": axisRows.Add("[Dim Thoi Gian].[Quy].Children"); break;
-            case "Thang": axisRows.Add("[Dim Thoi Gian].[Thang].Children"); break;
-            case "Ngay": axisRows.Add("[Dim Thoi Gian].[Ngay].Children"); break;
-            case "BangCH": axisRows.Add("[Dim Cua Hang].[Bang].Children"); break;
-            case "ThanhPhoCH": axisRows.Add("[Dim Cua Hang].[Ten Thanh Pho].Children"); break;
-            case "TenCH": 
-                axisRows.Add("[Dim Cua Hang].[Ten Cua Hang].Children");
-                axisRows.Add("[Dim Cua Hang].[So Dien Thoai].Children");
-                break;
-            case "LoaiKH": axisRows.Add("[Dim Khach Hang].[Loai Khach Hang].Children"); break;
-            case "TenKH": axisRows.Add("[Dim Khach Hang].[Ten KH].Children"); break;
-            case "TenMH": 
-                axisRows.Add("[Dim Mat Hang].[Ten Mat Hang].Children");
-                axisRows.Add("[Dim Mat Hang].[Kich Co].Children");
-                axisRows.Add("[Dim Mat Hang].[Trong Luong].Children");
-                axisRows.Add("[Dim Mat Hang].[Don Gia].Children");
-                break;
+        string path = dim switch {
+            "Nam" => "[Dim Thoi Gian].[Nam].Children",
+            "Quy" => "[Dim Thoi Gian].[Quy].Children",
+            "Thang" => "[Dim Thoi Gian].[Thang].Children",
+            "Ngay" => "[Dim Thoi Gian].[Ngay].Children",
+            "BangCH" => "[Dim Cua Hang].[Bang].Children",
+            "ThanhPhoCH" => "[Dim Cua Hang].[Ten Thanh Pho].Children",
+            "TenCH" => "[Dim Cua Hang].[Ten Cua Hang].Children",
+            "LoaiKH" => "[Dim Khach Hang].[Loai Khach Hang].Children",
+            "TenKH" => "[Dim Khach Hang].[Ten KH].Children",
+            "TenMH" => "[Dim Mat Hang].[Ten Mat Hang].Children",
+            "DonHang" => $"{orderPath}.Children",
+            _ => ""
+        };
+        if (!string.IsNullOrEmpty(path)) axisSet.Add(path);
+        
+        if (dim == "TenCH") axisSet.Add("[Dim Cua Hang].[So Dien Thoai].Children");
+        if (dim == "TenMH") {
+            axisSet.Add("[Dim Mat Hang].[Kich Co].Children");
+            axisSet.Add("[Dim Mat Hang].[Trong Luong].Children");
+            axisSet.Add("[Dim Mat Hang].[Don Gia].Children");
         }
     }
 
-    if (axisRows.Count == 0) axisRows.Add("[Dim Mat Hang].[Ten Mat Hang].Children");
+    if (axisSet.Count == 0) axisSet.Add("[Dim Mat Hang].[Ten Mat Hang].Children");
 
     string fromClause = "[DW Online Retail]";
     if (req.Filters != null) {
@@ -123,7 +159,7 @@ app.MapPost("/api/query", (QueryRequest req) => {
         }
     }
 
-    string mdx = $"SELECT NON EMPTY {measures} ON 0, NON EMPTY {{ {string.Join(" * ", axisRows)} }} ON 1 FROM {fromClause}";
+    string mdx = $"SELECT NON EMPTY {measures} ON 0, NON EMPTY {{ {string.Join(" * ", axisSet)} }} ON 1 FROM {fromClause}";
     return Results.Ok(ExecuteOlapQuery(mdx));
 });
 
