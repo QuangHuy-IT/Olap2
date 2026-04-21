@@ -3,462 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard OLAP Chuyên Nghiệp</title>
+    <title>OLAP Professional Dashboard</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.22/c3.min.css">
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
-    
-    <!-- D3 & C3 for Charts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.22/c3.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/c3_renderers.min.js"></script>
-    
-    <!-- Bootstrap Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #e0e7ff;
-            --success: #10b981;
-            --surface: #ffffff;
-            --bg: #f1f5f9;
-            --border: #e2e8f0;
-            --text: #1e293b;
-            --text-muted: #64748b;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-            --shadow-lg: 0 10px 40px rgba(99,102,241,0.12), 0 4px 12px rgba(0,0,0,0.06);
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            background-image: radial-gradient(ellipse at 20% 10%, rgba(99,102,241,0.07) 0%, transparent 50%),
-                              radial-gradient(ellipse at 80% 80%, rgba(16,185,129,0.05) 0%, transparent 50%);
-            min-height: 100vh;
-        }
-
-        /* ── Header Banner ── */
-        .page-header {
-            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%);
-            padding: 28px 40px;
-            border-radius: 20px;
-            margin-bottom: 24px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(79,70,229,0.35);
-        }
-        .page-header::before {
-            content: '';
-            position: absolute;
-            top: -40px; right: -40px;
-            width: 200px; height: 200px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.07);
-        }
-        .page-header::after {
-            content: '';
-            position: absolute;
-            bottom: -60px; left: 30%;
-            width: 300px; height: 200px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.05);
-        }
-        .page-header h3 {
-            color: #ffffff;
-            font-size: 1.5rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            margin: 0 0 4px;
-        }
-        .page-header p {
-            color: rgba(255,255,255,0.75);
-            font-size: 0.875rem;
-            margin: 0;
-        }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            background: rgba(255,255,255,0.18);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.25);
-            color: #fff;
-            padding: 8px 18px;
-            border-radius: 50px;
-            font-size: 13px;
-            font-weight: 500;
-            white-space: nowrap;
-            z-index: 1;
-            position: relative;
-        }
-        .status-dot {
-            width: 8px; height: 8px;
-            background: #6ee7b7;
-            border-radius: 50%;
-            box-shadow: 0 0 0 3px rgba(110,231,183,0.35);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 0 3px rgba(110,231,183,0.35); }
-            50%       { box-shadow: 0 0 0 6px rgba(110,231,183,0.15); }
-        }
-
-        /* ── Tabs ── */
-        .nav-tabs {
-            border-bottom: 2px solid var(--border);
-            margin-bottom: 24px;
-            gap: 12px;
-        }
-        .nav-tabs .nav-link {
-            border: none;
-            color: var(--text-muted);
-            font-weight: 600;
-            padding: 12px 24px;
-            border-radius: 12px 12px 0 0;
-            background: transparent;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        .nav-tabs .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: -2px; left: 0; right: 0;
-            height: 2px;
-            background: transparent;
-            transition: background 0.3s ease;
-        }
-        .nav-tabs .nav-link:hover {
-            color: var(--primary);
-            background: rgba(99,102,241,0.05);
-        }
-        .nav-tabs .nav-link.active {
-            color: var(--primary-dark);
-            background: transparent;
-        }
-        .nav-tabs .nav-link.active::after {
-            background: var(--primary);
-        }
-
-        /* ── Main Card ── */
-        .dashboard-card {
-            background: var(--surface);
-            padding: 32px;
-            border-radius: 20px;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid rgba(255,255,255,0.8);
-        }
-
-        /* ── Pivot UI Tweak ── */
-        .pvtUi { width: 100%; font-size: 13.5px; color: var(--text); }
-        .pvtAxisContainer, .pvtVals {
-            background: #fafbff;
-            border: 2px dashed #c7d2fe;
-            border-radius: 14px;
-            padding: 14px;
-            transition: border-color 0.25s, background 0.25s;
-            min-height: 56px;
-        }
-        .pvtAxisContainer:hover, .pvtVals:hover {
-            border-color: var(--primary);
-            background: #f5f3ff;
-        }
-
-        .pvtAxisContainer li.pvtAttr {
-            background: var(--surface);
-            border: 1px solid #ddd6fe;
-            padding: 6px 14px;
-            border-radius: 50px;
-            box-shadow: var(--shadow-sm);
-            font-weight: 500;
-            font-size: 13px;
-            color: #4338ca;
-            transition: all 0.18s ease;
-            margin: 3px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .pvtAxisContainer li.pvtAttr:hover {
-            background: var(--primary-light);
-            border-color: var(--primary);
-            color: var(--primary-dark);
-            cursor: grab;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 14px rgba(99,102,241,0.18);
-        }
-
-        table.pvtTable {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 20px;
-            font-size: 13.5px;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
-        }
-        table.pvtTable thead tr th,
-        table.pvtTable tbody tr th {
-            background: linear-gradient(180deg, #f8faff 0%, #f1f5f9 100%);
-            border: 1px solid #e8edf5;
-            padding: 13px 16px;
-            font-weight: 600;
-            color: var(--text);
-            white-space: nowrap;
-        }
-        table.pvtTable tbody tr td {
-            border: 1px solid #edf0f7;
-            padding: 11px 16px;
-            color: #334155;
-        }
-        table.pvtTable tbody tr:hover td {
-            background: linear-gradient(90deg, #f5f3ff, #ede9fe);
-            color: var(--primary-dark);
-        }
-        table.pvtTable tbody tr td.pvtTotal,
-        table.pvtTable tbody tr th.pvtTotalLabel,
-        table.pvtTable thead tr th.pvtTotalLabel {
-            background: linear-gradient(135deg, #ede9fe, #ddd6fe) !important;
-            font-weight: 600;
-            color: #3730a3;
-        }
-
-        .pvtAggregator, .pvtRenderer {
-            padding: 7px 12px;
-            border-radius: 10px;
-            border: 1px solid #c7d2fe;
-            font-weight: 500;
-            font-size: 13px;
-            color: var(--text);
-            outline: none;
-            background: var(--surface);
-            cursor: pointer;
-            margin-bottom: 5px;
-        }
-
-        /* ── Loading ── */
-        .loading-wrap {
-            padding: 64px 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-        }
-        .spinner-ring {
-            width: 52px; height: 52px;
-            border: 4px solid #e0e7ff;
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 0.85s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-text {
-            color: var(--text-muted);
-            font-size: 14px;
-            font-weight: 500;
-        }
+        :root { --primary: #4f46e5; --bg: #f8fafc; --border: #e2e8f0; --surface: #ffffff; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #0f172a; margin: 0; }
         
-        .c3-tooltip-container { z-index: 1000; } /* Fix c3 tooltip visibility */
+        .filter-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 90px; }
+        .dynamic-filters { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+        .filter-group { display: flex; flex-direction: column; gap: 4px; }
+        .filter-group label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-select { border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 12px; min-width: 150px; background: #fff; outline: none; }
+
+        .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-align: center; }
+        .kpi-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+        .kpi-value { font-size: 22px; font-weight: 700; color: var(--primary); }
+
+        .dim-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .dim-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; }
+        .dim-title { font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin: 0; }
+        .dim-item { padding: 9px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 5px; transition: 0.2s; }
+        .dim-item:hover { background: #f8fafc; color: var(--primary); }
+        .dim-item.active { background: #eef2ff; color: var(--primary); font-weight: 600; border-left: 4px solid var(--primary); }
+        
+        .card-chart { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; height: 420px; position: relative; }
+        .table-container { max-height: 500px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--border); }
+        .olap-table { width: 100%; font-size: 11px; border-collapse: collapse; position: relative; }
+        .olap-table thead th { position: sticky; top: 0; background: #f8fafc; z-index: 10; box-shadow: inset 0 -1px 0 var(--border); }
+        .olap-table th { padding: 12px; border-bottom: 2px solid var(--border); text-align: left; color: #64748b; }
+        .olap-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+
+        .loader { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); display: none; justify-content: center; align-items: center; z-index: 2000; }
     </style>
 </head>
 <body>
 
-<div class="container-fluid py-4 px-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-xl-11">
+    <div class="loader" id="loader"><div class="spinner-border text-primary"></div></div>
 
-            <!-- Header Banner -->
-            <div class="page-header d-flex justify-content-between align-items-center">
-                <div style="position:relative;z-index:1">
-                    <h3>&#x1F4CA; Dashboard Phân Tích OLAP</h3>
-                    <p>Hệ thống phân tích Kho Dữ Liệu Đa Chiều &mdash; Data Warehouse</p>
-                </div>
-                <div class="status-badge">
-                    <span class="status-dot"></span>
-                    Hệ thống trực tuyến
-                </div>
+    <div class="filter-bar">
+        <div class="container-fluid d-flex align-items-center justify-content-between">
+            <div class="dynamic-filters" id="filter-container">
+                <div class="text-muted small py-3">Nhấp chọn các Hierarchy bên trái để bắt đầu Slice & Dice...</div>
             </div>
-
-            <!-- Tabs Navigation -->
-            <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-pane" type="button" role="tab" aria-controls="sales-pane" aria-selected="true">
-                        &#x1F4B0; Phân Tích Bán Hàng
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-pane" type="button" role="tab" aria-controls="inventory-pane" aria-selected="false">
-                        &#x1F4E6; Phân Tích Tồn Kho
-                    </button>
-                </li>
-            </ul>
-
-            <!-- Main Card -->
-            <div class="dashboard-card tab-content" id="dashboardTabsContent">
-                
-                <!-- BÁN HÀNG PANE -->
-                <div class="tab-pane fade show active" id="sales-pane" role="tabpanel" aria-labelledby="sales-tab" tabindex="0">
-                    <div id="sales-output" class="w-100">
-                        <div class="loading-wrap">
-                            <div class="spinner-ring"></div>
-                            <span class="loading-text">Đang tải dữ liệu Bán Hàng từ Khối Cube...</span>
-                        </div>
-                    </div>
+            <div class="d-flex gap-2">
+                <div class="btn-group">
+                    <input type="radio" class="btn-check" name="cube" id="cb-sales" value="BanHang" checked onchange="loadData()">
+                    <label class="btn btn-outline-primary btn-sm" for="cb-sales">CUBE BÁN HÀNG</label>
+                    <input type="radio" class="btn-check" name="cube" id="cb-inv" value="TonKho" onchange="loadData()">
+                    <label class="btn btn-outline-primary btn-sm" for="cb-inv">CUBE KHO</label>
                 </div>
-
-                <!-- TỒN KHO PANE -->
-                <div class="tab-pane fade" id="inventory-pane" role="tabpanel" aria-labelledby="inventory-tab" tabindex="0">
-                    <div id="inventory-output" class="w-100"></div>
-                </div>
-
+                <button class="btn btn-light btn-sm border" onclick="location.reload()">↺ Reload Toàn Trang</button>
             </div>
-
         </div>
     </div>
-</div>
 
-<script>
-    $(function(){
-        // Cấu hình C3 Renderers
-        var renderers = $.extend($.pivotUtilities.renderers, $.pivotUtilities.c3_renderers);
+    <div class="container-fluid p-4">
+        <div class="row g-4 mb-4">
+            <div class="col-md-3"><div class="kpi-card"><div class="kpi-label" id="k-lbl-1">TỔNG DOANH THU</div><div class="kpi-value" id="k-val-1">0</div></div></div>
+            <div class="col-md-3"><div class="kpi-card"><div class="kpi-label" id="k-lbl-2">SỐ LƯỢNG BÁN</div><div class="kpi-value" id="k-val-2">0</div></div></div>
+            <div class="col-md-3"><div class="kpi-card"><div class="kpi-label" id="k-lbl-3">SỐ ĐƠN HÀNG</div><div class="kpi-value" id="k-val-3">0</div></div></div>
+            <div class="col-md-3"><div class="kpi-card"><div class="kpi-label">SỐ DÒNG KẾT QUẢ</div><div class="kpi-value" id="k-val-4">0</div></div></div>
+        </div>
 
-        function getApiErrorMessage(payload, fallbackMessage) {
-            if (!payload) return fallbackMessage;
-            if (typeof payload === 'string') return payload;
-            if (payload.detail) return payload.detail;
-            if (payload.title) return payload.title;
-            return fallbackMessage;
-        }
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="dim-panel">
+                    <div class="dim-header">
+                        <span class="fw-bold small text-muted">CÁC CHIỀU PHÂN TÍCH</span>
+                        <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="resetSidebar()" style="font-size: 11px;">↺ Reset Chiều</button>
+                    </div>
 
-        function fetchArrayData(url, defaultErrorMessage) {
-            return fetch(url)
-                .then(async response => {
-                    var contentType = response.headers.get('content-type') || '';
-                    var payload = contentType.includes('application/json')
-                        ? await response.json()
-                        : await response.text();
+                    <div class="mb-4">
+                        <div class="dim-title">🕒 THỜI GIAN</div>
+                        <div class="dim-item" data-id="Nam" data-label="Năm">Năm <span>►</span></div>
+                        <div class="dim-item" data-id="Quy" data-label="Quý">Quý <span>►</span></div>
+                        <div class="dim-item" data-id="Thang" data-label="Tháng">Tháng <span>►</span></div>
+                        <div class="dim-item" data-id="Ngay" data-label="Ngày">Ngày <span>►</span></div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="dim-title">🏬 CỬA HÀNG</div>
+                        <div class="dim-item" data-id="BangCH" data-label="Bang">Bang <span>►</span></div>
+                        <div class="dim-item" data-id="ThanhPhoCH" data-label="Thành phố">Thành phố <span>►</span></div>
+                        <div class="dim-item" data-id="TenCH" data-label="Tên cửa hàng">Tên cửa hàng <span>►</span></div>
+                    </div>
+                    <div class="mb-4" id="section-khachhang">
+                        <div class="dim-title">👥 KHÁCH HÀNG</div>
+                        <div class="dim-item" data-id="LoaiKH" data-label="Loại KH">Loại KH <span>►</span></div>
+                        <div class="dim-item" data-id="TenKH" data-label="Tên KH">Tên KH <span>►</span></div>
+                    </div>
+                    <div>
+                        <div class="dim-title">📦 MẶT HÀNG</div>
+                        <div class="dim-item" data-id="TenMH" data-label="Tên mặt hàng">Tên mặt hàng <span>►</span></div>
+                    </div>
+                </div>
+            </div>
 
-                    if (!response.ok) {
-                        throw new Error(getApiErrorMessage(payload, defaultErrorMessage));
-                    }
+            <div class="col-md-9">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-8"><div class="card-chart"><canvas id="barChart"></canvas></div></div>
+                    <div class="col-md-4"><div class="card-chart"><canvas id="pieChart"></canvas></div></div>
+                </div>
+                <div class="dim-panel overflow-hidden">
+                    <div class="fw-bold mb-3 small text-muted">BẢNG DỮ LIỆU ĐA CHIỀU (REALTIME)</div>
+                    <div class="table-container"><table class="olap-table" id="dataTable">
+                        <thead><tr id="t-head"><th>Đang tải dữ liệu...</th></tr></thead>
+                        <tbody id="t-body"></tbody>
+                    </table></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    if (!Array.isArray(payload)) {
-                        throw new Error('Dữ liệu API không đúng định dạng mảng.');
-                    }
+    <script>
+        let selectedDims = [], allFilterMembers = {}, activeFilters = {}, barChart, pieChart;
 
-                    return payload;
-                });
-        }
+        $(function() {
+            // Load filters và mặc định chọn Năm
+            fetch('/api/filters').then(r => r.json()).then(data => { 
+                allFilterMembers = data; 
+                // Mặc định chọn chiều Năm ngay khi khởi động
+                $('.dim-item[data-id="Nam"]').addClass('active');
+                selectedDims.push('Nam');
+                renderFilterBar();
+                loadData();
+            });
 
-        function pickExistingField(data, candidates) {
-            if (!data || data.length === 0) return null;
-            var keys = Object.keys(data[0] || {});
-            for (var i = 0; i < candidates.length; i++) {
-                if (keys.includes(candidates[i])) return candidates[i];
-            }
-            return null;
-        }
-
-        function loadSalesData() {
-            fetchArrayData('http://localhost:5250/api/sales?t=' + new Date().getTime(), 'Không thể tải dữ liệu bán hàng từ API.')
-                .then(data => {
-                    $("#sales-output").empty();
-                    if (!data || data.length === 0) {
-                        $("#sales-output").html('<div class="alert alert-warning">Dữ liệu trả về rỗng. Vui lòng kiểm tra lại Cube.</div>');
-                        return;
-                    }
-                    try {
-                        var salesValueField = pickExistingField(data, ["So Luong Dat", "Thanh Tien", "Sales Amount"]);
-                        var salesPivotOptions = {
-                            renderers: renderers,
-                            rows: ["Cua Hang - Ten Thanh Pho", "Mat Hang - Mo Ta"],
-                            cols: [],
-                            aggregatorName: salesValueField ? "Sum" : "Count",
-                            rendererName: "Table"
-                        };
-
-                        if (salesValueField) {
-                            salesPivotOptions.vals = [salesValueField];
-                        }
-
-                        $("#sales-output").pivotUI(
-                            data,
-                            salesPivotOptions
-                        );
-                    } catch (error) {
-                        console.error('Lỗi render Pivot Bán Hàng:', error);
-                        $("#sales-output").html('<div class="alert alert-danger"><strong>Lỗi:</strong> Không render được PivotTable. Chi tiết: ' + (error.message || error) + '</div>');
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi lấy data Bán Hàng:', error);
-                    $("#sales-output").html('<div class="alert alert-danger"><strong>Lỗi:</strong> ' + (error.message || 'Không thể kết nối tới máy chủ Backend. Hãy chắc chắn API /api/sales đang chạy.') + '</div>');
-                });
-        }
-
-        function loadInventoryData() {
-            $("#inventory-output").html('<div class="loading-wrap"><div class="spinner-ring"></div><span class="loading-text">Đang tải dữ liệu Tồn Kho...</span></div>');
-            
-            fetchArrayData('http://localhost:5250/api/inventory?t=' + new Date().getTime(), 'Không thể tải dữ liệu tồn kho từ API.')
-                .then(data => {
-                    $("#inventory-output").empty();
-                    if (!data || data.length === 0) {
-                        $("#inventory-output").html('<div class="alert alert-warning">Dữ liệu trả về rỗng. Vui lòng kiểm tra lại Cube.</div>');
-                        return;
-                    }
-                    try {
-                        var inventoryValueField = pickExistingField(data, ["So Luong Trong Kho"]);
-                        var inventoryPivotOptions = {
-                            renderers: renderers,
-                            rows: ["Cua Hang - Ten Thanh Pho", "Mat Hang - Mo Ta"],
-                            cols: [],
-                            aggregatorName: inventoryValueField ? "Sum" : "Count",
-                            rendererName: "Table"
-                        };
-
-                        if (inventoryValueField) {
-                            inventoryPivotOptions.vals = [inventoryValueField];
-                        }
-
-                        $("#inventory-output").pivotUI(
-                            data,
-                            inventoryPivotOptions
-                        );
-                    } catch (error) {
-                        console.error('Lỗi render Pivot Tồn Kho:', error);
-                        $("#inventory-output").html('<div class="alert alert-danger"><strong>Lỗi:</strong> Không render được PivotTable. Chi tiết: ' + (error.message || error) + '</div>');
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi lấy data Tồn Kho:', error);
-                    $("#inventory-output").html('<div class="alert alert-danger"><strong>Lỗi:</strong> ' + (error.message || 'Không thể kết nối tới máy chủ Backend. Hãy chắc chắn API /api/inventory đang chạy.') + '</div>');
-                });
-        }
-
-        // Load Sales tab by default
-        loadSalesData();
-
-        // Load Inventory tab when switched to it for the first time
-        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (event) {
-            var target = $(event.target).attr("data-bs-target"); // newly activated tab
-            if (target === "#inventory-pane" && $("#inventory-output").is(':empty')) {
-                loadInventoryData();
-            }
+            $('.dim-item').click(function() {
+                const id = $(this).data('id');
+                $(this).toggleClass('active');
+                if($(this).hasClass('active')) {
+                    if(!selectedDims.includes(id)) selectedDims.push(id);
+                } else {
+                    selectedDims = selectedDims.filter(d => d !== id);
+                    delete activeFilters[id];
+                }
+                renderFilterBar();
+                loadData();
+            });
         });
 
-    });
-</script>
+        function resetSidebar() {
+            selectedDims = ['Nam'];
+            activeFilters = {};
+            $('.dim-item').removeClass('active');
+            $('.dim-item[data-id="Nam"]').addClass('active');
+            renderFilterBar();
+            loadData();
+        }
 
+        function renderFilterBar() {
+            const container = $('#filter-container');
+            container.empty();
+            if(selectedDims.length === 0) {
+                container.html('<div class="text-muted small py-3">Nhấp chọn các Hierarchy bên trái để bắt đầu Slice & Dice...</div>');
+                return;
+            }
+            selectedDims.forEach(dimId => {
+                const label = $(`.dim-item[data-id="${dimId}"]`).data('label');
+                const members = allFilterMembers[dimId] || [];
+                const current = activeFilters[dimId] || 'All';
+                let optHtml = `<option value="All">Tất cả ${label}</option>`;
+                members.forEach(m => {
+                    optHtml += `<option value="${m.id}" ${m.id === current ? 'selected' : ''}>${m.label}</option>`;
+                });
+                container.append(`<div class="filter-group">
+                    <label>${label}</label>
+                    <select class="filter-select" onchange="updateSelection('${dimId}', this.value)">${optHtml}</select>
+                </div>`);
+            });
+        }
+
+        function updateSelection(dimId, val) { activeFilters[dimId] = val; loadData(); }
+
+        function loadData() {
+            const cube = $('input[name="cube"]:checked').val();
+            if (cube === 'TonKho') {
+                $('#section-khachhang').hide();
+                if (selectedDims.includes('LoaiKH') || selectedDims.includes('TenKH')) {
+                    selectedDims = selectedDims.filter(d => d !== 'LoaiKH' && d !== 'TenKH');
+                    $('.dim-item[data-id="LoaiKH"], .dim-item[data-id="TenKH"]').removeClass('active');
+                    delete activeFilters['LoaiKH']; delete activeFilters['TenKH'];
+                    renderFilterBar();
+                }
+            } else {
+                $('#section-khachhang').show();
+            }
+
+            if(selectedDims.length === 0) {
+                 $('#t-head').html('<th>Chọn ít nhất 1 chiều để xem dữ liệu...</th>');
+                 $('#t-body').empty();
+                 return;
+            }
+            $('#loader').show();
+            fetch('/api/query', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({Cube: cube, Dimensions: selectedDims, Filters: activeFilters})
+            }).then(r => r.json()).then(data => {
+                renderUI(data, cube);
+                $('#loader').hide();
+            }).catch(() => $('#loader').hide());
+        }
+
+        function renderUI(data, cube) {
+            $('#k-val-4').text(data.length);
+            if(data.length === 0) {
+                $('#t-body').html('<tr><td colspan="100" class="text-center py-4">Không có dữ liệu</td></tr>');
+                if(barChart) barChart.destroy();
+                if(pieChart) pieChart.destroy();
+                $('#k-val-1, #k-val-2, #k-val-3').text('0');
+                return;
+            }
+
+            const cols = Object.keys(data[0]);
+            $('#t-head').html(cols.map(c => `<th>${c.replace(/\[[DM]\] /g, '')}</th>`).join(''));
+            $('#t-body').html(data.map(r => `<tr>${cols.map(c => `<td>${r[c]}</td>`).join('')}</tr>`).join(''));
+
+            const valField = cols.find(c => c.includes('[M]') && (c.toLowerCase().includes('tien') || c.toLowerCase().includes('kho')));
+            const qtyField = cols.find(c => c.includes('[M]') && c.toLowerCase().includes('dat'));
+            const countField = cols.find(c => c.includes('[M]') && c.toLowerCase().includes('count'));
+            
+            if(cube === 'BanHang') {
+                const sRev = data.reduce((s, r) => s + parseFloat(r[valField] || 0), 0);
+                const sQty = data.reduce((s, r) => s + parseFloat(r[qtyField] || 0), 0);
+                const sCount = data.reduce((s, r) => s + parseFloat(r[countField] || 0), 0);
+                $('#k-val-1').text(format(sRev)); $('#k-val-2').text(format(sQty)); $('#k-val-3').text(format(sCount));
+                renderCharts(data, valField, 'Doanh thu (VNĐ)');
+            } else {
+                const sInv = data.reduce((s, r) => s + parseFloat(r[valField] || 0), 0);
+                $('#k-val-1').text(format(sInv)); $('#k-val-2').text('N/A'); $('#k-val-3').text('N/A');
+                renderCharts(data, valField, 'Số lượng tồn');
+            }
+        }
+
+        function renderCharts(data, valCol, title) {
+            const dimCols = Object.keys(data[0]).filter(k => k.includes('[D]'));
+            const aggr = {};
+            data.forEach(d => {
+                const label = dimCols.map(c => d[c]).join(' | ');
+                aggr[label] = (aggr[label] || 0) + parseFloat(d[valCol] || 0);
+            });
+            const labels = Object.keys(aggr).slice(0, 15), values = labels.map(l => aggr[l]);
+
+            if(barChart) barChart.destroy();
+            if(pieChart) pieChart.destroy();
+
+            barChart = new Chart(document.getElementById('barChart'), {
+                type: 'bar',
+                data: { labels, datasets: [{label: title, data: values, backgroundColor: '#4f46e5', borderRadius: 4}]},
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => format(v) } } } }
+            });
+            pieChart = new Chart(document.getElementById('pieChart'), {
+                type: 'doughnut',
+                data: { labels: labels.slice(0, 8), datasets: [{data: values.slice(0, 8), backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316']}]},
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } }
+            });
+        }
+        function format(v) { return new Intl.NumberFormat('vi-VN').format(v); }
+    </script>
 </body>
 </html>
